@@ -3,226 +3,220 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>SAFEPAL WALLET</title>
-
-  <!-- Web3Modal v2 -->
-  <script src="https://unpkg.com/@web3modal/html@2.5.0/dist/index.js"></script>
-
-  <!-- ethers -->
-  <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
+  <title>SafePal Wallet DApp</title>
 
   <style>
     body {
-      background-color: #0b1437;
+      background-color: #0a1a3a;
       color: white;
       font-family: Arial, sans-serif;
-      text-align: center;
-      padding: 40px 20px;
-      margin: 0;
-      min-height: 100vh;
-      display: flex;
-      flex-direction: column;
-      justify-content: flex-start;
-      align-items: center;
+      padding: 20px;
+      max-width: 600px;
+      margin: auto;
     }
     h1 {
-      font-size: 3rem;
+      text-align: center;
       margin-bottom: 30px;
       font-weight: bold;
-      letter-spacing: 2px;
     }
     button {
-      background-color: white;
-      color: #0b1437;
-      border: none;
-      border-radius: 6px;
-      padding: 12px 22px;
+      padding: 10px 20px;
+      margin: 5px;
       font-size: 16px;
       cursor: pointer;
-      margin: 10px;
-      font-weight: bold;
-      transition: background-color 0.3s, color 0.3s;
-    }
-    button:hover {
-      background-color: #143066;
-      color: white;
-    }
-    input {
-      padding: 8px;
-      font-size: 14px;
       border-radius: 5px;
       border: none;
-      margin: 5px 10px 5px 0;
-      width: 250px;
-      max-width: 90vw;
+      background-color: #145dbf;
+      color: white;
+      transition: background-color 0.3s ease;
     }
-    #status, #network, #balance, #wcLink, #txStatus {
-      margin-top: 15px;
-      font-weight: bold;
-      word-break: break-word;
-      max-width: 90vw;
+    button:hover:not(:disabled) {
+      background-color: #0f4a8c;
+    }
+    button:disabled {
+      background-color: gray;
+      cursor: default;
     }
     #txForm {
-      margin-top: 25px;
-      display: flex;
-      flex-wrap: wrap;
-      justify-content: center;
-      align-items: center;
+      margin-top: 20px;
+      display: none;
+      flex-direction: column;
+      gap: 10px;
+    }
+    #txForm input {
+      padding: 8px;
+      font-size: 16px;
+      border-radius: 4px;
+      border: none;
+    }
+    p {
+      margin: 10px 0;
+      word-break: break-word;
+    }
+    #wcLink {
+      font-size: 14px;
+      color: #a3c1f5;
+      user-select: text;
     }
   </style>
+
+  <!-- Primero cargamos web3modal y ethers -->
+  <script src="https://unpkg.com/@web3modal/html@2.5.0/dist/index.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
 </head>
 <body>
+  <h1>SAFEPAL WALLET</h1>
 
-<h1>SAFEPAL WALLET</h1>
+  <button id="connectWallet">Conectar Wallet</button>
+  <button id="disconnectWallet" disabled>Desconectar Wallet</button>
 
-<button id="connectWallet">Conectar Wallet</button>
-<button id="disconnectWallet" disabled>Desconectar Wallet</button>
+  <p id="status">No conectado</p>
+  <p id="network"></p>
+  <p id="balance"></p>
+  <p id="wcLink"></p>
 
-<p id="status">No conectado</p>
-<p id="network"></p>
-<p id="balance"></p>
-<p id="wcLink"></p>
+  <form id="txForm">
+    <input id="recipient" type="text" placeholder="Dirección destinataria" />
+    <input id="amount" type="text" placeholder="Cantidad en ETH" />
+    <button type="button" id="sendTx">Enviar Transacción</button>
+  </form>
 
-<div id="txForm" style="display:none;">
-  <input type="text" id="recipient" placeholder="Dirección destinataria" />
-  <input type="text" id="amount" placeholder="Cantidad ETH/BNB" />
-  <button id="sendTx">Enviar Transacción</button>
   <p id="txStatus"></p>
-</div>
 
-<script>
-  const { ethers } = window;
+  <script>
+    window.onload = function () {
+      const { ethers } = window;
 
-  let provider;
-  let signer;
-  let userAddress;
-  let web3Modal;
+      let provider;
+      let signer;
+      let userAddress;
+      let web3Modal;
 
-  const connectBtn = document.getElementById("connectWallet");
-  const disconnectBtn = document.getElementById("disconnectWallet");
-  const statusP = document.getElementById("status");
-  const networkP = document.getElementById("network");
-  const balanceP = document.getElementById("balance");
-  const wcLinkP = document.getElementById("wcLink");
+      const connectBtn = document.getElementById("connectWallet");
+      const disconnectBtn = document.getElementById("disconnectWallet");
+      const statusP = document.getElementById("status");
+      const networkP = document.getElementById("network");
+      const balanceP = document.getElementById("balance");
+      const wcLinkP = document.getElementById("wcLink");
 
-  const txForm = document.getElementById("txForm");
-  const recipientInput = document.getElementById("recipient");
-  const amountInput = document.getElementById("amount");
-  const sendBtn = document.getElementById("sendTx");
-  const txStatus = document.getElementById("txStatus");
+      const txForm = document.getElementById("txForm");
+      const recipientInput = document.getElementById("recipient");
+      const amountInput = document.getElementById("amount");
+      const sendBtn = document.getElementById("sendTx");
+      const txStatus = document.getElementById("txStatus");
 
-  function initWeb3Modal() {
-    web3Modal = new window.Web3Modal({
-      projectId: "efb6d86ce36c72a0b7dab297d5ce1da9",
-      themeMode: "dark",
-      ethereum: {
-        appName: "SafePal Wallet DApp",
-        chains: [1, 56] // Ethereum mainnet y BSC
-      }
-    });
-  }
-
-  connectBtn.onclick = async () => {
-    try {
-      if (!web3Modal) initWeb3Modal();
-
-      await web3Modal.modal().open();
-
-      provider = await web3Modal.connect();
-
-      const ethersProvider = new ethers.providers.Web3Provider(provider);
-      signer = ethersProvider.getSigner();
-
-      userAddress = await signer.getAddress();
-      statusP.textContent = `Conectado: ${userAddress}`;
-
-      const network = await ethersProvider.getNetwork();
-      networkP.textContent = `Red: ${network.name} (chainId: ${network.chainId})`;
-
-      const balance = await ethersProvider.getBalance(userAddress);
-      balanceP.textContent = `Saldo: ${ethers.utils.formatEther(balance)} ETH`;
-
-      if (provider.connector && provider.connector.uri) {
-        wcLinkP.textContent = `Link QR WalletConnect: ${provider.connector.uri}`;
-      } else {
-        wcLinkP.textContent = "";
+      function initWeb3Modal() {
+        web3Modal = new window.Web3Modal({
+          projectId: "efb6d86ce36c72a0b7dab297d5ce1da9",
+          themeMode: "dark",
+          ethereum: {
+            appName: "SafePal Wallet DApp",
+            chains: [1, 56] // Ethereum mainnet y BSC
+          }
+        });
       }
 
-      connectBtn.disabled = true;
-      disconnectBtn.disabled = false;
+      connectBtn.onclick = async () => {
+        try {
+          if (!web3Modal) initWeb3Modal();
 
-      txForm.style.display = "flex";
-      sendBtn.disabled = false;
+          await web3Modal.modal().open();
 
-      provider.on("disconnect", () => {
+          provider = await web3Modal.connect();
+
+          const ethersProvider = new ethers.providers.Web3Provider(provider);
+          signer = ethersProvider.getSigner();
+
+          userAddress = await signer.getAddress();
+          statusP.textContent = `Conectado: ${userAddress}`;
+
+          const network = await ethersProvider.getNetwork();
+          networkP.textContent = `Red: ${network.name} (chainId: ${network.chainId})`;
+
+          const balance = await ethersProvider.getBalance(userAddress);
+          balanceP.textContent = `Saldo: ${ethers.utils.formatEther(balance)} ETH`;
+
+          if (provider.connector && provider.connector.uri) {
+            wcLinkP.textContent = `Link QR WalletConnect: ${provider.connector.uri}`;
+          } else {
+            wcLinkP.textContent = "";
+          }
+
+          connectBtn.disabled = true;
+          disconnectBtn.disabled = false;
+
+          txForm.style.display = "flex";
+          sendBtn.disabled = false;
+
+          provider.on("disconnect", () => {
+            disconnectWallet();
+          });
+        } catch (err) {
+          console.error("Error conectando wallet:", err);
+          statusP.textContent = `Error al conectar wallet: ${err.message || err}`;
+        }
+      };
+
+      disconnectBtn.onclick = async () => {
         disconnectWallet();
-      });
-    } catch (err) {
-      console.error("Error conectando wallet:", err);
-      statusP.textContent = `Error al conectar wallet: ${err.message || err}`;
-    }
-  };
+      };
 
-  disconnectBtn.onclick = async () => {
-    disconnectWallet();
-  };
+      async function disconnectWallet() {
+        if (provider?.disconnect) {
+          await provider.disconnect();
+        }
+        await web3Modal.clearCachedProvider();
 
-  async function disconnectWallet() {
-    if (provider?.disconnect) {
-      await provider.disconnect();
-    }
-    await web3Modal.clearCachedProvider();
+        provider = null;
+        signer = null;
+        userAddress = null;
 
-    provider = null;
-    signer = null;
-    userAddress = null;
+        statusP.textContent = "No conectado";
+        networkP.textContent = "";
+        balanceP.textContent = "";
+        wcLinkP.textContent = "";
+        txStatus.textContent = "";
+        txForm.style.display = "none";
 
-    statusP.textContent = "No conectado";
-    networkP.textContent = "";
-    balanceP.textContent = "";
-    wcLinkP.textContent = "";
-    txStatus.textContent = "";
-    txForm.style.display = "none";
+        connectBtn.disabled = false;
+        disconnectBtn.disabled = true;
+        sendBtn.disabled = true;
+      }
 
-    connectBtn.disabled = false;
-    disconnectBtn.disabled = true;
-    sendBtn.disabled = true;
-  }
+      sendBtn.onclick = async () => {
+        const recipient = recipientInput.value.trim();
+        const amount = amountInput.value.trim();
 
-  sendBtn.onclick = async () => {
-    const recipient = recipientInput.value.trim();
-    const amount = amountInput.value.trim();
+        if (!ethers.utils.isAddress(recipient)) {
+          txStatus.textContent = "Dirección destinataria inválida.";
+          return;
+        }
 
-    if (!ethers.utils.isAddress(recipient)) {
-      txStatus.textContent = "Dirección destinataria inválida.";
-      return;
-    }
+        if (isNaN(amount) || Number(amount) <= 0) {
+          txStatus.textContent = "Cantidad inválida.";
+          return;
+        }
 
-    if (isNaN(amount) || Number(amount) <= 0) {
-      txStatus.textContent = "Cantidad inválida.";
-      return;
-    }
+        try {
+          txStatus.textContent = "Enviando transacción...";
+          const tx = await signer.sendTransaction({
+            to: recipient,
+            value: ethers.utils.parseEther(amount)
+          });
 
-    try {
-      txStatus.textContent = "Enviando transacción...";
-      const tx = await signer.sendTransaction({
-        to: recipient,
-        value: ethers.utils.parseEther(amount)
-      });
+          txStatus.textContent = `Transacción enviada: ${tx.hash}`;
+          await tx.wait();
+          txStatus.textContent = `Transacción confirmada! Hash: ${tx.hash}`;
 
-      txStatus.textContent = `Transacción enviada: ${tx.hash}`;
-      await tx.wait();
-      txStatus.textContent = `Transacción confirmada! Hash: ${tx.hash}`;
-
-      const ethersProvider = new ethers.providers.Web3Provider(provider);
-      const balance = await ethersProvider.getBalance(userAddress);
-      balanceP.textContent = `Saldo: ${ethers.utils.formatEther(balance)} ETH`;
-    } catch (error) {
-      console.error(error);
-      txStatus.textContent = `Error: ${error.message || error}`;
-    }
-  };
-</script>
-
+          const ethersProvider = new ethers.providers.Web3Provider(provider);
+          const balance = await ethersProvider.getBalance(userAddress);
+          balanceP.textContent = `Saldo: ${ethers.utils.formatEther(balance)} ETH`;
+        } catch (error) {
+          console.error(error);
+          txStatus.textContent = `Error: ${error.message || error}`;
+        }
+      };
+    };
+  </script>
 </body>
 </html>
