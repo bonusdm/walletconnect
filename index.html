@@ -1,38 +1,64 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Conectar Wallet BSC con WalletConnect y mostrar Link</title>
+  <title>SAFEPAL WALLET</title>
   <script src="https://cdn.jsdelivr.net/npm/web3@1.8.2/dist/web3.min.js"></script>
   <script src="https://unpkg.com/web3modal@1.9.12/dist/index.js"></script>
   <script src="https://unpkg.com/@walletconnect/web3-provider@1.8.0/dist/umd/index.min.js"></script>
   <style>
     body {
+      background-color: #0b1437; /* azul oscuro */
+      color: white;
       font-family: Arial, sans-serif;
       text-align: center;
-      padding-top: 50px;
+      padding-top: 40px;
+      margin: 0;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-start;
+      align-items: center;
+    }
+    h1 {
+      font-size: 3rem;
+      margin-bottom: 30px;
+      font-weight: bold;
+      letter-spacing: 2px;
     }
     button {
-      padding: 10px 20px;
+      background-color: white;
+      color: #0b1437;
+      border: none;
+      border-radius: 6px;
+      padding: 12px 22px;
       font-size: 16px;
-      margin: 10px;
       cursor: pointer;
-    }
-    #status, #wcLink {
-      margin-top: 20px;
+      margin: 10px;
       font-weight: bold;
-      word-break: break-all;
+      transition: background-color 0.3s, color 0.3s;
+    }
+    button:hover {
+      background-color: #143066;
+      color: white;
+    }
+    #status, #network, #balance, #wcLink {
+      margin-top: 15px;
+      font-weight: bold;
+      word-break: break-word;
     }
   </style>
 </head>
 <body>
 
-<h2>Conectar Wallet en Binance Smart Chain</h2>
+<h1>SAFEPAL WALLET</h1>
 
 <button id="connectWallet">Conectar Wallet</button>
 <button id="disconnectWallet" disabled>Desconectar Wallet</button>
 
 <p id="status">No conectado</p>
-<p id="wcLink"></p> <!-- Aquí mostraremos el link WalletConnect -->
+<p id="network"></p>
+<p id="balance"></p>
+<p id="wcLink"></p>
 
 <script>
   let web3Modal;
@@ -40,7 +66,7 @@
   let web3;
   let accounts;
 
-  window.addEventListener('load', async () => {
+  window.addEventListener('load', () => {
     const providerOptions = {
       walletconnect: {
         package: window.WalletConnectProvider.default,
@@ -64,21 +90,27 @@
 
   async function connectWallet() {
     try {
-      // Antes de conectar limpiamos el link
       document.getElementById('wcLink').innerText = "";
+      document.getElementById('status').innerText = "Conectando...";
 
       provider = await web3Modal.connect();
 
-      // Acceder al URI del WalletConnect
       if (provider.connector && provider.connector.uri) {
-        const wcUri = provider.connector.uri;
-        document.getElementById('wcLink').innerText = "Link WalletConnect: " + wcUri;
+        document.getElementById('wcLink').innerText = "Link QR WalletConnect: " + provider.connector.uri;
       }
 
       web3 = new Web3(provider);
       accounts = await web3.eth.getAccounts();
 
       document.getElementById('status').innerText = "Conectado: " + accounts[0];
+
+      const chainId = await web3.eth.getChainId();
+      document.getElementById('network').innerText = "Network ID: " + chainId;
+
+      const balanceWei = await web3.eth.getBalance(accounts[0]);
+      const balanceBNB = web3.utils.fromWei(balanceWei, 'ether');
+      document.getElementById('balance').innerText = "Saldo BNB: " + balanceBNB;
+
       document.getElementById('connectWallet').disabled = true;
       document.getElementById('disconnectWallet').disabled = false;
 
@@ -86,9 +118,11 @@
         disconnectWallet();
       });
     } catch (err) {
-      console.log("Error al conectar wallet:", err);
+      console.error("Error al conectar wallet:", err);
       document.getElementById('status').innerText = "No conectado";
       document.getElementById('wcLink').innerText = "";
+      document.getElementById('network').innerText = "";
+      document.getElementById('balance').innerText = "";
     }
   }
 
@@ -101,6 +135,8 @@
     accounts = null;
     document.getElementById('status').innerText = "No conectado";
     document.getElementById('wcLink').innerText = "";
+    document.getElementById('network').innerText = "";
+    document.getElementById('balance').innerText = "";
     document.getElementById('connectWallet').disabled = false;
     document.getElementById('disconnectWallet').disabled = true;
   }
