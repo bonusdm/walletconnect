@@ -111,7 +111,6 @@
   const sendBtn = document.getElementById("sendTx");
   const txStatus = document.getElementById("txStatus");
 
-  // Inicializamos Web3Modal una vez para toda la sesión
   function initWeb3Modal() {
     web3Modal = new Web3Modal({
       projectId: "efb6d86ce36c72a0b7dab297d5ce1da9",
@@ -127,7 +126,6 @@
     try {
       if (!web3Modal) initWeb3Modal();
 
-      // Abrimos el modal explícitamente
       await web3Modal.modal().open();
 
       provider = await web3Modal.connect();
@@ -160,8 +158,8 @@
         disconnectWallet();
       });
     } catch (err) {
-      console.error(err);
-      statusP.textContent = "Error al conectar wallet";
+      console.error("Error connecting wallet:", err);
+      statusP.textContent = `Error al conectar wallet: ${err.message || err}`;
     }
   };
 
@@ -216,7 +214,6 @@
       await tx.wait();
       txStatus.textContent = `Transacción confirmada! Hash: ${tx.hash}`;
 
-      // Actualizar saldo después de enviar
       const ethersProvider = new ethers.providers.Web3Provider(provider);
       const balance = await ethersProvider.getBalance(userAddress);
       balanceP.textContent = `Saldo: ${ethers.utils.formatEther(balance)} ETH`;
