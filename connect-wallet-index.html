@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Conectar Wallet</title>
+  <script src="https://cdn.jsdelivr.net/npm/web3@1.8.2/dist/web3.min.js"></script>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      text-align: center;
+      padding-top: 100px;
+    }
+    button {
+      padding: 10px 20px;
+      font-size: 16px;
+      cursor: pointer;
+    }
+    #status {
+      margin-top: 20px;
+      font-weight: bold;
+    }
+  </style>
+</head>
+<body>
+  <h2>Conecta tu Wallet</h2>
+  <button onclick="connectWallet()">Conectar Wallet</button>
+
+  <p id="status"></p>
+
+  <script>
+    async function connectWallet() {
+      if (window.ethereum) {
+        try {
+          const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
+          document.getElementById("status").innerText = "Conectado: " + accounts[0];
+        } catch (err) {
+          document.getElementById("status").innerText = "Conexión rechazada por el usuario.";
+        }
+      } else {
+        document.getElementById("status").innerText = "No se detectó MetaMask u otra wallet compatible.";
+      }
+    }
+  </script>
+</body>
+</html>
