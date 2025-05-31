@@ -1,19 +1,26 @@
 <!DOCTYPE html>
-<html>
+<html lang="es">
 <head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>SAFEPAL WALLET</title>
-  <script src="https://cdn.jsdelivr.net/npm/web3@1.8.2/dist/web3.min.js"></script>
-  <script src="https://unpkg.com/web3modal@1.9.12/dist/index.js"></script>
-  <script src="https://unpkg.com/@walletconnect/web3-provider@1.8.0/dist/umd/index.min.js"></script>
+
+  <!-- Web3Modal v2 -->
+  <script src="https://unpkg.com/@web3modal/html@2.5.0/dist/index.js"></script>
+
+  <!-- Wagmi y ethers (para manejar conexión con wallets) -->
+  <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/wagmi@0.10.11/dist/wagmi.umd.min.js"></script>
+
   <style>
     body {
-      background-color: #0b1437; /* azul oscuro */
+      background-color: #0b1437;
       color: white;
       font-family: Arial, sans-serif;
       text-align: center;
-      padding-top: 40px;
+      padding: 40px 20px;
       margin: 0;
-      height: 100vh;
+      min-height: 100vh;
       display: flex;
       flex-direction: column;
       justify-content: flex-start;
@@ -61,84 +68,84 @@
 <p id="wcLink"></p>
 
 <script>
-  let web3Modal;
+  const { ethers } = window;
+  const { Web3Modal } = window;
+
   let provider;
-  let web3;
-  let accounts;
+  let signer;
+  let userAddress;
 
-  window.addEventListener('load', () => {
-    const providerOptions = {
-      walletconnect: {
-        package: window.WalletConnectProvider.default,
-        options: {
-          rpc: {
-            56: "https://bsc-dataseed.binance.org/"
-          },
-          network: "binance",
-        }
-      }
-    };
+  const connectBtn = document.getElementById("connectWallet");
+  const disconnectBtn = document.getElementById("disconnectWallet");
+  const statusP = document.getElementById("status");
+  const networkP = document.getElementById("network");
+  const balanceP = document.getElementById("balance");
+  const wcLinkP = document.getElementById("wcLink");
 
-    web3Modal = new window.Web3Modal.default({
-      cacheProvider: false,
-      providerOptions,
-    });
-
-    document.getElementById('connectWallet').onclick = connectWallet;
-    document.getElementById('disconnectWallet').onclick = disconnectWallet;
+  const web3Modal = new Web3Modal({
+    projectId: "efb6d86ce36c72a0b7dab297d5ce1da9",
+    themeMode: "dark",
+    ethereum: {
+      appName: "SafePal Wallet DApp",
+      chains: [1, 56], // Ethereum Mainnet y Binance Smart Chain
+    }
   });
 
-  async function connectWallet() {
+  connectBtn.onclick = async () => {
     try {
-      document.getElementById('wcLink').innerText = "";
-      document.getElementById('status').innerText = "Conectando...";
-
       provider = await web3Modal.connect();
 
+      const ethersProvider = new ethers.providers.Web3Provider(provider);
+      signer = ethersProvider.getSigner();
+
+      userAddress = await signer.getAddress();
+      statusP.textContent = `Conectado: ${userAddress}`;
+
+      const network = await ethersProvider.getNetwork();
+      networkP.textContent = `Red: ${network.name} (chainId: ${network.chainId})`;
+
+      const balance = await ethersProvider.getBalance(userAddress);
+      balanceP.textContent = `Saldo: ${ethers.utils.formatEther(balance)} ETH`;
+
       if (provider.connector && provider.connector.uri) {
-        document.getElementById('wcLink').innerText = "Link QR WalletConnect: " + provider.connector.uri;
+        wcLinkP.textContent = `Link QR WalletConnect: ${provider.connector.uri}`;
+      } else {
+        wcLinkP.textContent = "";
       }
 
-      web3 = new Web3(provider);
-      accounts = await web3.eth.getAccounts();
-
-      document.getElementById('status').innerText = "Conectado: " + accounts[0];
-
-      const chainId = await web3.eth.getChainId();
-      document.getElementById('network').innerText = "Network ID: " + chainId;
-
-      const balanceWei = await web3.eth.getBalance(accounts[0]);
-      const balanceBNB = web3.utils.fromWei(balanceWei, 'ether');
-      document.getElementById('balance').innerText = "Saldo BNB: " + balanceBNB;
-
-      document.getElementById('connectWallet').disabled = true;
-      document.getElementById('disconnectWallet').disabled = false;
+      connectBtn.disabled = true;
+      disconnectBtn.disabled = false;
 
       provider.on("disconnect", () => {
         disconnectWallet();
       });
     } catch (err) {
-      console.error("Error al conectar wallet:", err);
-      document.getElementById('status').innerText = "No conectado";
-      document.getElementById('wcLink').innerText = "";
-      document.getElementById('network').innerText = "";
-      document.getElementById('balance').innerText = "";
+      console.error(err);
+      statusP.textContent = "Error al conectar wallet";
     }
-  }
+  };
+
+  disconnectBtn.onclick = async () => {
+    disconnectWallet();
+  };
 
   async function disconnectWallet() {
-    if (provider.close) {
-      await provider.close();
+    if (provider?.disconnect) {
+      await provider.disconnect();
     }
     await web3Modal.clearCachedProvider();
+
     provider = null;
-    accounts = null;
-    document.getElementById('status').innerText = "No conectado";
-    document.getElementById('wcLink').innerText = "";
-    document.getElementById('network').innerText = "";
-    document.getElementById('balance').innerText = "";
-    document.getElementById('connectWallet').disabled = false;
-    document.getElementById('disconnectWallet').disabled = true;
+    signer = null;
+    userAddress = null;
+
+    statusP.textContent = "No conectado";
+    networkP.textContent = "";
+    balanceP.textContent = "";
+    wcLinkP.textContent = "";
+
+    connectBtn.disabled = false;
+    disconnectBtn.disabled = true;
   }
 </script>
 
