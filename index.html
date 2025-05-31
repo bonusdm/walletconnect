@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Conectar Wallet</title>
+  <title>Conectar Wallet y Enviar ETH</title>
   <script src="https://cdn.jsdelivr.net/npm/web3@1.8.2/dist/web3.min.js"></script>
   <style>
     body {
@@ -12,6 +12,7 @@
     button {
       padding: 10px 20px;
       font-size: 16px;
+      margin: 10px;
       cursor: pointer;
     }
     #status {
@@ -21,17 +22,23 @@
   </style>
 </head>
 <body>
-  <h2>Conecta tu Wallet</h2>
-  <button onclick="connectWallet()">Conectar Wallet</button>
 
-  <p id="status"></p>
+  <h2>Conectar Wallet y Enviar ETH</h2>
+
+  <button onclick="connectWallet()">Conectar Wallet</button>
+  <button onclick="sendTransaction()">Enviar ETH</button>
+
+  <p id="status">No conectado</p>
 
   <script>
+    let currentAccount = null;
+
     async function connectWallet() {
       if (window.ethereum) {
         try {
           const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
-          document.getElementById("status").innerText = "Conectado: " + accounts[0];
+          currentAccount = accounts[0];
+          document.getElementById("status").innerText = "Conectado: " + currentAccount;
         } catch (err) {
           document.getElementById("status").innerText = "Conexión rechazada por el usuario.";
         }
@@ -39,6 +46,41 @@
         document.getElementById("status").innerText = "No se detectó MetaMask u otra wallet compatible.";
       }
     }
+
+    async function sendTransaction() {
+      if (!currentAccount) {
+        alert("Primero conecta tu wallet.");
+        return;
+      }
+      try {
+        const recipient = prompt("Ingresa la dirección a la que enviar ETH:");
+        const amountEth = prompt("Ingresa la cantidad de ETH a enviar:");
+
+        if (!recipient || !amountEth) {
+          alert("Datos incompletos.");
+          return;
+        }
+
+        // Convertir ETH a wei en hexadecimal
+        const value = '0x' + (parseFloat(amountEth) * 1e18).toString(16);
+
+        const params = [{
+          from: currentAccount,
+          to: recipient,
+          value: value
+        }];
+
+        const txHash = await window.ethereum.request({
+          method: 'eth_sendTransaction',
+          params: params,
+        });
+
+        alert("Transacción enviada. Hash: " + txHash);
+      } catch (error) {
+        alert("Error: " + error.message);
+      }
+    }
   </script>
+
 </body>
 </html>
