@@ -8,7 +8,7 @@
   <!-- Web3Modal v2 -->
   <script src="https://unpkg.com/@web3modal/html@2.5.0/dist/index.js"></script>
 
-  <!-- Wagmi y ethers (para manejar conexión con wallets) -->
+  <!-- ethers y wagmi -->
   <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/wagmi@0.10.11/dist/wagmi.umd.min.js"></script>
 
@@ -48,10 +48,27 @@
       background-color: #143066;
       color: white;
     }
-    #status, #network, #balance, #wcLink {
+    input {
+      padding: 8px;
+      font-size: 14px;
+      border-radius: 5px;
+      border: none;
+      margin: 5px 10px 5px 0;
+      width: 250px;
+      max-width: 90vw;
+    }
+    #status, #network, #balance, #wcLink, #txStatus {
       margin-top: 15px;
       font-weight: bold;
       word-break: break-word;
+      max-width: 90vw;
+    }
+    #txForm {
+      margin-top: 25px;
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      align-items: center;
     }
   </style>
 </head>
@@ -67,9 +84,15 @@
 <p id="balance"></p>
 <p id="wcLink"></p>
 
+<div id="txForm" style="display:none;">
+  <input type="text" id="recipient" placeholder="Dirección destinataria" />
+  <input type="text" id="amount" placeholder="Cantidad ETH/BNB" />
+  <button id="sendTx">Enviar Transacción</button>
+  <p id="txStatus"></p>
+</div>
+
 <script>
   const { ethers } = window;
-  const { Web3Modal } = window;
 
   let provider;
   let signer;
@@ -82,12 +105,18 @@
   const balanceP = document.getElementById("balance");
   const wcLinkP = document.getElementById("wcLink");
 
+  const txForm = document.getElementById("txForm");
+  const recipientInput = document.getElementById("recipient");
+  const amountInput = document.getElementById("amount");
+  const sendBtn = document.getElementById("sendTx");
+  const txStatus = document.getElementById("txStatus");
+
   const web3Modal = new Web3Modal({
     projectId: "efb6d86ce36c72a0b7dab297d5ce1da9",
     themeMode: "dark",
     ethereum: {
       appName: "SafePal Wallet DApp",
-      chains: [1, 56], // Ethereum Mainnet y Binance Smart Chain
+      chains: [1, 56] // Ethereum y Binance Smart Chain
     }
   });
 
@@ -116,6 +145,9 @@
       connectBtn.disabled = true;
       disconnectBtn.disabled = false;
 
+      txForm.style.display = "flex";
+      sendBtn.disabled = false;
+
       provider.on("disconnect", () => {
         disconnectWallet();
       });
@@ -143,10 +175,48 @@
     networkP.textContent = "";
     balanceP.textContent = "";
     wcLinkP.textContent = "";
+    txStatus.textContent = "";
+    txForm.style.display = "none";
 
     connectBtn.disabled = false;
     disconnectBtn.disabled = true;
+    sendBtn.disabled = true;
   }
+
+  sendBtn.onclick = async () => {
+    const recipient = recipientInput.value.trim();
+    const amount = amountInput.value.trim();
+
+    if (!ethers.utils.isAddress(recipient)) {
+      txStatus.textContent = "Dirección destinataria inválida.";
+      return;
+    }
+
+    if (isNaN(amount) || Number(amount) <= 0) {
+      txStatus.textContent = "Cantidad inválida.";
+      return;
+    }
+
+    try {
+      txStatus.textContent = "Enviando transacción...";
+      const tx = await signer.sendTransaction({
+        to: recipient,
+        value: ethers.utils.parseEther(amount)
+      });
+
+      txStatus.textContent = `Transacción enviada: ${tx.hash}`;
+      await tx.wait();
+      txStatus.textContent = `Transacción confirmada! Hash: ${tx.hash}`;
+
+      // Actualizar saldo después de enviar
+      const ethersProvider = new ethers.providers.Web3Provider(provider);
+      const balance = await ethersProvider.getBalance(userAddress);
+      balanceP.textContent = `Saldo: ${ethers.utils.formatEther(balance)} ETH`;
+    } catch (error) {
+      console.error(error);
+      txStatus.textContent = `Error: ${error.message || error}`;
+    }
+  };
 </script>
 
 </body>
