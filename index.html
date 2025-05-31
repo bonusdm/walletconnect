@@ -112,7 +112,7 @@
   const txStatus = document.getElementById("txStatus");
 
   function initWeb3Modal() {
-    web3Modal = new Web3Modal({
+    web3Modal = new window.Web3Modal({
       projectId: "efb6d86ce36c72a0b7dab297d5ce1da9",
       themeMode: "dark",
       ethereum: {
@@ -158,7 +158,7 @@
         disconnectWallet();
       });
     } catch (err) {
-      console.error("Error connecting wallet:", err);
+      console.error("Error conectando wallet:", err);
       statusP.textContent = `Error al conectar wallet: ${err.message || err}`;
     }
   };
