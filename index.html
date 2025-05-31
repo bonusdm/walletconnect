@@ -8,9 +8,8 @@
   <!-- Web3Modal v2 -->
   <script src="https://unpkg.com/@web3modal/html@2.5.0/dist/index.js"></script>
 
-  <!-- ethers y wagmi -->
+  <!-- ethers -->
   <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/wagmi@0.10.11/dist/wagmi.umd.min.js"></script>
 
   <style>
     body {
@@ -97,6 +96,7 @@
   let provider;
   let signer;
   let userAddress;
+  let web3Modal;
 
   const connectBtn = document.getElementById("connectWallet");
   const disconnectBtn = document.getElementById("disconnectWallet");
@@ -111,17 +111,25 @@
   const sendBtn = document.getElementById("sendTx");
   const txStatus = document.getElementById("txStatus");
 
-  const web3Modal = new Web3Modal({
-    projectId: "efb6d86ce36c72a0b7dab297d5ce1da9",
-    themeMode: "dark",
-    ethereum: {
-      appName: "SafePal Wallet DApp",
-      chains: [1, 56] // Ethereum y Binance Smart Chain
-    }
-  });
+  // Inicializamos Web3Modal una vez para toda la sesión
+  function initWeb3Modal() {
+    web3Modal = new Web3Modal({
+      projectId: "efb6d86ce36c72a0b7dab297d5ce1da9",
+      themeMode: "dark",
+      ethereum: {
+        appName: "SafePal Wallet DApp",
+        chains: [1, 56] // Ethereum mainnet y BSC
+      }
+    });
+  }
 
   connectBtn.onclick = async () => {
     try {
+      if (!web3Modal) initWeb3Modal();
+
+      // Abrimos el modal explícitamente
+      await web3Modal.modal().open();
+
       provider = await web3Modal.connect();
 
       const ethersProvider = new ethers.providers.Web3Provider(provider);
