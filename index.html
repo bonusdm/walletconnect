@@ -1,8 +1,10 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Conectar Wallet y Enviar ETH</title>
+  <title>Conectar Wallet BSC sin Infura</title>
   <script src="https://cdn.jsdelivr.net/npm/web3@1.8.2/dist/web3.min.js"></script>
+  <script src="https://unpkg.com/web3modal@1.9.12/dist/index.js"></script>
+  <script src="https://unpkg.com/@walletconnect/web3-provider@1.8.0/dist/umd/index.min.js"></script>
   <style>
     body {
       font-family: Arial, sans-serif;
@@ -23,64 +25,73 @@
 </head>
 <body>
 
-  <h2>Conectar Wallet y Enviar ETH</h2>
+<h2>Conectar Wallet en Binance Smart Chain</h2>
 
-  <button onclick="connectWallet()">Conectar Wallet</button>
-  <button onclick="sendTransaction()">Enviar ETH</button>
+<button id="connectWallet">Conectar Wallet</button>
+<button id="disconnectWallet" disabled>Desconectar Wallet</button>
 
-  <p id="status">No conectado</p>
+<p id="status">No conectado</p>
 
-  <script>
-    let currentAccount = null;
+<script>
+  let web3Modal;
+  let provider;
+  let web3;
+  let accounts;
 
-    async function connectWallet() {
-      if (window.ethereum) {
-        try {
-          const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
-          currentAccount = accounts[0];
-          document.getElementById("status").innerText = "Conectado: " + currentAccount;
-        } catch (err) {
-          document.getElementById("status").innerText = "Conexión rechazada por el usuario.";
+  window.addEventListener('load', async () => {
+    const providerOptions = {
+      walletconnect: {
+        package: window.WalletConnectProvider.default,
+        options: {
+          rpc: {
+            56: "https://bsc-dataseed.binance.org/"
+          },
+          network: "binance",
         }
-      } else {
-        document.getElementById("status").innerText = "No se detectó MetaMask u otra wallet compatible.";
       }
+    };
+
+    web3Modal = new window.Web3Modal.default({
+      cacheProvider: false,
+      providerOptions,
+    });
+
+    document.getElementById('connectWallet').onclick = connectWallet;
+    document.getElementById('disconnectWallet').onclick = disconnectWallet;
+  });
+
+  async function connectWallet() {
+    try {
+      provider = await web3Modal.connect();
+      web3 = new Web3(provider);
+
+      accounts = await web3.eth.getAccounts();
+      document.getElementById('status').innerText = "Conectado: " + accounts[0];
+
+      document.getElementById('connectWallet').disabled = true;
+      document.getElementById('disconnectWallet').disabled = false;
+
+      provider.on("disconnect", () => {
+        disconnectWallet();
+      });
+    } catch (err) {
+      console.log("Error al conectar wallet:", err);
+      document.getElementById('status').innerText = "No conectado";
     }
+  }
 
-    async function sendTransaction() {
-      if (!currentAccount) {
-        alert("Primero conecta tu wallet.");
-        return;
-      }
-      try {
-        const recipient = prompt("Ingresa la dirección a la que enviar ETH:");
-        const amountEth = prompt("Ingresa la cantidad de ETH a enviar:");
-
-        if (!recipient || !amountEth) {
-          alert("Datos incompletos.");
-          return;
-        }
-
-        // Convertir ETH a wei en hexadecimal
-        const value = '0x' + (parseFloat(amountEth) * 1e18).toString(16);
-
-        const params = [{
-          from: currentAccount,
-          to: recipient,
-          value: value
-        }];
-
-        const txHash = await window.ethereum.request({
-          method: 'eth_sendTransaction',
-          params: params,
-        });
-
-        alert("Transacción enviada. Hash: " + txHash);
-      } catch (error) {
-        alert("Error: " + error.message);
-      }
+  async function disconnectWallet() {
+    if (provider.close) {
+      await provider.close();
     }
-  </script>
+    await web3Modal.clearCachedProvider();
+    provider = null;
+    accounts = null;
+    document.getElementById('status').innerText = "No conectado";
+    document.getElementById('connectWallet').disabled = false;
+    document.getElementById('disconnectWallet').disabled = true;
+  }
+</script>
 
 </body>
 </html>
